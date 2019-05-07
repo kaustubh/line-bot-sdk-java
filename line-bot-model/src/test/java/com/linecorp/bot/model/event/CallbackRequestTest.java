@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 LINE Corporation
+ * Copyright 2018 LINE Corporation
  *
  * LINE Corporation licenses this file to you under the Apache License,
  * version 2.0 (the "License"); you may not use this file except in compliance
@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.stream.Collectors;
 
 import org.junit.Test;
 import org.springframework.util.StreamUtils;
@@ -29,6 +30,7 @@ import org.springframework.util.StreamUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.linecorp.bot.model.event.link.LinkContent;
+import com.linecorp.bot.model.event.message.ContentProvider;
 import com.linecorp.bot.model.event.message.FileMessageContent;
 import com.linecorp.bot.model.event.message.ImageMessageContent;
 import com.linecorp.bot.model.event.message.LocationMessageContent;
@@ -37,8 +39,10 @@ import com.linecorp.bot.model.event.message.StickerMessageContent;
 import com.linecorp.bot.model.event.message.TextMessageContent;
 import com.linecorp.bot.model.event.message.UnknownMessageContent;
 import com.linecorp.bot.model.event.source.GroupSource;
+import com.linecorp.bot.model.event.source.Source;
 import com.linecorp.bot.model.event.source.UnknownSource;
 import com.linecorp.bot.model.event.source.UserSource;
+import com.linecorp.bot.model.event.things.ThingsContent;
 import com.linecorp.bot.model.testutil.TestUtil;
 
 public class CallbackRequestTest {
@@ -56,9 +60,15 @@ public class CallbackRequestTest {
         }
     }
 
+    private static void assertDestination(CallbackRequest request) {
+        assertThat(request.getDestination()).isEqualTo("Uab012345678901234567890123456789");
+    }
+
     @Test
     public void textTextUser() throws IOException {
         parse("callback/text-user.json", callbackRequest -> {
+            assertDestination(callbackRequest);
+            assertThat(callbackRequest.getDestination()).isEqualTo("Uab012345678901234567890123456789");
             assertThat(callbackRequest.getEvents()).hasSize(1);
             Event event = callbackRequest.getEvents().get(0);
             assertThat(event).isInstanceOf(MessageEvent.class);
@@ -76,6 +86,7 @@ public class CallbackRequestTest {
     @Test
     public void textTextGroup() throws IOException {
         parse("callback/text-group.json", callbackRequest -> {
+            assertDestination(callbackRequest);
             assertThat(callbackRequest.getEvents()).hasSize(1);
             Event event = callbackRequest.getEvents().get(0);
             assertThat(event).isInstanceOf(MessageEvent.class);
@@ -95,6 +106,7 @@ public class CallbackRequestTest {
     @Test
     public void testImage() throws IOException {
         parse("callback/image.json", callbackRequest -> {
+            assertDestination(callbackRequest);
             assertThat(callbackRequest.getEvents()).hasSize(1);
             Event event = callbackRequest.getEvents().get(0);
             assertThat(event).isInstanceOf(MessageEvent.class);
@@ -108,12 +120,19 @@ public class CallbackRequestTest {
                     .isEqualTo("nHuyWiB7yP5Zw52FIkcQobQuGDXCTA");
             MessageContent message = messageEvent.getMessage();
             assertThat(message).isInstanceOf(ImageMessageContent.class);
+            ImageMessageContent image = (ImageMessageContent) message;
+            assertThat(image.getId()).isEqualTo("325708");
+            assertThat(image.getContentProvider()).isEqualTo(
+                    new ContentProvider("external",
+                                        "https://example.com/original.jpg",
+                                        "https://example.com/preview.jpg"));
         });
     }
 
     @Test
     public void testLocation() throws IOException {
         parse("callback/location.json", callbackRequest -> {
+            assertDestination(callbackRequest);
             assertThat(callbackRequest.getEvents()).hasSize(1);
             Event event = callbackRequest.getEvents().get(0);
             assertThat(event).isInstanceOf(MessageEvent.class);
@@ -139,6 +158,7 @@ public class CallbackRequestTest {
     @Test
     public void testFile() throws IOException {
         parse("callback/file.json", callbackRequest -> {
+            assertDestination(callbackRequest);
             assertThat(callbackRequest.getEvents()).hasSize(1);
             Event event = callbackRequest.getEvents().get(0);
             assertThat(event).isInstanceOf(MessageEvent.class);
@@ -164,6 +184,7 @@ public class CallbackRequestTest {
     @Test
     public void testSticker() throws IOException {
         parse("callback/sticker.json", callbackRequest -> {
+            assertDestination(callbackRequest);
             assertThat(callbackRequest.getEvents()).hasSize(1);
             Event event = callbackRequest.getEvents().get(0);
             assertThat(event).isInstanceOf(MessageEvent.class);
@@ -191,6 +212,7 @@ public class CallbackRequestTest {
     @Test
     public void testFollow() throws IOException {
         parse("callback/follow.json", callbackRequest -> {
+            assertDestination(callbackRequest);
             assertThat(callbackRequest.getEvents()).hasSize(1);
             Event event = callbackRequest.getEvents().get(0);
             assertThat(event).isInstanceOf(FollowEvent.class);
@@ -210,6 +232,7 @@ public class CallbackRequestTest {
     @Test
     public void testUnfollow() throws IOException {
         parse("callback/unfollow.json", callbackRequest -> {
+            assertDestination(callbackRequest);
             assertThat(callbackRequest.getEvents()).hasSize(1);
             Event event = callbackRequest.getEvents().get(0);
             assertThat(event).isInstanceOf(UnfollowEvent.class);
@@ -225,6 +248,7 @@ public class CallbackRequestTest {
     @Test
     public void testJoin() throws IOException {
         parse("callback/join.json", callbackRequest -> {
+            assertDestination(callbackRequest);
             assertThat(callbackRequest.getEvents()).hasSize(1);
             Event event = callbackRequest.getEvents().get(0);
             assertThat(event).isInstanceOf(JoinEvent.class);
@@ -240,6 +264,7 @@ public class CallbackRequestTest {
     @Test
     public void testLeave() throws IOException {
         parse("callback/leave.json", callbackRequest -> {
+            assertDestination(callbackRequest);
             assertThat(callbackRequest.getEvents()).hasSize(1);
             Event event = callbackRequest.getEvents().get(0);
             assertThat(event).isInstanceOf(LeaveEvent.class);
@@ -255,6 +280,7 @@ public class CallbackRequestTest {
     @Test
     public void testPostback() throws IOException {
         parse("callback/postback.json", callbackRequest -> {
+            assertDestination(callbackRequest);
             assertThat(callbackRequest.getEvents()).hasSize(1);
             Event event = callbackRequest.getEvents().get(0);
             assertThat(event).isInstanceOf(PostbackEvent.class);
@@ -274,6 +300,7 @@ public class CallbackRequestTest {
     @Test
     public void testBeacon() throws IOException {
         parse("callback/beacon.json", callbackRequest -> {
+            assertDestination(callbackRequest);
             assertThat(callbackRequest.getEvents()).hasSize(1);
             Event event = callbackRequest.getEvents().get(0);
             assertThat(event).isInstanceOf(BeaconEvent.class);
@@ -299,6 +326,7 @@ public class CallbackRequestTest {
     @Test
     public void testBeaconWithDeviceMessage() throws IOException {
         parse("callback/beacon_with_dm.json", callbackRequest -> {
+            assertDestination(callbackRequest);
             assertThat(callbackRequest.getEvents()).hasSize(1);
             Event event = callbackRequest.getEvents().get(0);
             assertThat(event).isInstanceOf(BeaconEvent.class);
@@ -325,6 +353,7 @@ public class CallbackRequestTest {
     @Test
     public void testAccountLink() throws IOException {
         parse("callback/account_link.json", callbackRequest -> {
+            assertDestination(callbackRequest);
             assertThat(callbackRequest.getEvents()).hasSize(1);
             Event event = callbackRequest.getEvents().get(0);
             assertThat(event).isInstanceOf(AccountLinkEvent.class);
@@ -343,10 +372,83 @@ public class CallbackRequestTest {
         });
     }
 
+    @Test
+    public void testLineThingsLink() throws IOException {
+        parse("callback/line-things-link.json", callbackRequest -> {
+            assertThat(callbackRequest.getEvents()).hasSize(1);
+            Event event = callbackRequest.getEvents().get(0);
+            assertThat(event).isInstanceOf(ThingsEvent.class);
+            assertThat(event.getSource())
+                    .isInstanceOf(UserSource.class);
+            assertThat(event.getSource().getUserId())
+                    .isEqualTo("U012345678901234567890123456789ab");
+            assertThat(event.getTimestamp())
+                    .isEqualTo(Instant.parse("2016-05-07T13:57:59.859Z"));
+
+            ThingsEvent thingsEvent = (ThingsEvent) event;
+            assertThat(thingsEvent.getThings().getDeviceId())
+                    .isEqualTo("t016560bc3fb1e42b9fe9293ca6e2db71");
+            assertThat(thingsEvent.getThings().getType())
+                    .isEqualTo(ThingsContent.ThingsType.LINK);
+        });
+    }
+
+    @Test
+    public void testLineThingsUnlink() throws IOException {
+        parse("callback/line-things-unlink.json", callbackRequest -> {
+            assertThat(callbackRequest.getEvents()).hasSize(1);
+            Event event = callbackRequest.getEvents().get(0);
+            assertThat(event).isInstanceOf(ThingsEvent.class);
+            assertThat(event.getSource())
+                    .isInstanceOf(UserSource.class);
+            assertThat(event.getSource().getUserId())
+                    .isEqualTo("U012345678901234567890123456789ab");
+            assertThat(event.getTimestamp())
+                    .isEqualTo(Instant.parse("2016-05-07T13:57:59.859Z"));
+
+            ThingsEvent thingsEvent = (ThingsEvent) event;
+            assertThat(thingsEvent.getThings().getDeviceId())
+                    .isEqualTo("t016560bc3fb1e42b9fe9293ca6e2db71");
+            assertThat(thingsEvent.getThings().getType())
+                    .isEqualTo(ThingsContent.ThingsType.UNLINK);
+        });
+    }
+
+    @Test
+    public void testMemberJoined() throws IOException {
+        parse("callback/member_joined.json", callbackRequest -> {
+            assertDestination(callbackRequest);
+            Event event = callbackRequest.getEvents().get(0);
+            assertThat(event.getSource()).isInstanceOf(GroupSource.class);
+            assertThat(event).isInstanceOf(MemberJoinedEvent.class);
+            MemberJoinedEvent memberJoinedEvent = (MemberJoinedEvent) event;
+            String uids = memberJoinedEvent.getJoined().getMembers().stream()
+                    .map(Source::getUserId)
+                    .collect(Collectors.joining(","));
+            assertThat(uids).isEqualTo("U111111");
+        });
+    }
+
+    @Test
+    public void testMemberLeft() throws IOException {
+        parse("callback/member_left.json", callbackRequest -> {
+            assertDestination(callbackRequest);
+            Event event = callbackRequest.getEvents().get(0);
+            assertThat(event.getSource()).isInstanceOf(GroupSource.class);
+            assertThat(event).isInstanceOf(MemberLeftEvent.class);
+            MemberLeftEvent memberLeftEvent = (MemberLeftEvent) event;
+            String uids = memberLeftEvent.getLeft().getMembers().stream()
+                    .map(Source::getUserId)
+                    .collect(Collectors.joining(","));
+            assertThat(uids).isEqualTo("U111111");
+        });
+    }
+
     // Event, that has brand new eventType
     @Test
     public void testUnknown() throws IOException {
         parse("callback/unknown.json", callbackRequest -> {
+            assertDestination(callbackRequest);
             assertThat(callbackRequest.getEvents()).hasSize(2);
 
             Event event1 = callbackRequest.getEvents().get(0);

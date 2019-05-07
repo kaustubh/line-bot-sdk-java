@@ -16,6 +16,7 @@
 
 package com.linecorp.bot.client;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import com.linecorp.bot.model.Multicast;
@@ -26,6 +27,8 @@ import com.linecorp.bot.model.event.source.RoomSource;
 import com.linecorp.bot.model.profile.MembersIdsResponse;
 import com.linecorp.bot.model.profile.UserProfileResponse;
 import com.linecorp.bot.model.response.BotApiResponse;
+import com.linecorp.bot.model.response.IssueLinkTokenResponse;
+import com.linecorp.bot.model.response.NumberOfMessagesResponse;
 import com.linecorp.bot.model.richmenu.RichMenu;
 import com.linecorp.bot.model.richmenu.RichMenuIdResponse;
 import com.linecorp.bot.model.richmenu.RichMenuListResponse;
@@ -76,6 +79,33 @@ public interface LineMessagingClient {
      * @see <a href="https://developers.line.me/en/reference/messaging-api/#get-content">//developers.line.me/en/reference/messaging-api/#get-content</a>
      */
     CompletableFuture<MessageContentResponse> getMessageContent(String messageId);
+
+    /**
+     * Gets the number of messages sent with the /bot/message/reply endpoint. Note that the number of messages
+     * retrieved by this operation does not include the number of messages sent from LINE@ Manager.
+     *
+     * @param date Date the messages were sent. The format should be {@code yyyyMMdd} (for Example:
+     *             {@literal "20191231"}) and the timezone should be UTC+9.
+     */
+    CompletableFuture<NumberOfMessagesResponse> getNumberOfSentReplyMessages(String date);
+
+    /**
+     * Gets the number of messages sent with the /bot/message/push endpoint. Note that the number of messages
+     * retrieved by this operation does not include the number of messages sent from LINE@ Manager.
+     *
+     * @param date Date the messages were sent. The format should be {@code yyyyMMdd} (for Example:
+     *             {@literal "20191231"}) and the timezone should be UTC+9.
+     */
+    CompletableFuture<NumberOfMessagesResponse> getNumberOfSentPushMessages(String date);
+
+    /**
+     * Gets the number of messages sent with the /bot/message/multicast endpoint. The number of messages
+     * retrieved by this operation does not include the number of messages sent from LINE@ Manager.
+     *
+     * @param date Date the messages were sent. The format should be {@code yyyyMMdd} (for Example:
+     *             {@literal "20191231"}) and the timezone should be UTC+9.
+     */
+    CompletableFuture<NumberOfMessagesResponse> getNumberOfSentMulticastMessages(String date);
 
     /**
      * Get user profile information.
@@ -180,11 +210,27 @@ public interface LineMessagingClient {
     CompletableFuture<BotApiResponse> linkRichMenuIdToUser(String userId, String richMenuId);
 
     /**
+     * Link rich menu to users.
+     *
+     * @see <a href="https://developers.line.biz/en/reference/messaging-api/#link-rich-menu-to-users">
+     *     Link rich menu to multiple users</a>
+     */
+    CompletableFuture<BotApiResponse> linkRichMenuIdToUsers(List<String> userIds, String richMenuId);
+
+    /**
      * Unlink rich menu from user.
      *
      * @see <a href="https://developers.line.me/en/docs/messaging-api/reference/#unlink-rich-menu-from-user">//developers.line.me/en/docs/messaging-api/reference/#unlink-rich-menu-from-user</a>
      */
     CompletableFuture<BotApiResponse> unlinkRichMenuIdFromUser(String userId);
+
+    /**
+     * Unlink rich menu from users.
+     *
+     * @see <a href="https://developers.line.biz/en/reference/messaging-api/#unlink-rich-menu-from-users">
+     *     Unlink rich menu to multiple users</a>
+     */
+    CompletableFuture<BotApiResponse> unlinkRichMenuIdFromUsers(List<String> userIds);
 
     /**
      * Download rich menu image.
@@ -207,6 +253,34 @@ public interface LineMessagingClient {
      * @see <a href="https://developers.line.me/en/docs/messaging-api/reference/#get-rich-menu-list">//developers.line.me/en/docs/messaging-api/reference/#get-rich-menu-list</a>
      */
     CompletableFuture<RichMenuListResponse> getRichMenuList();
+
+    /**
+     * Set default rich menu.
+     *
+     * @see <a href="https://developers.line.me/en/reference/messaging-api/#set-default-rich-menu">//developers.line.me/en/reference/messaging-api/#set-default-rich-menu</a>
+     */
+    CompletableFuture<BotApiResponse> setDefaultRichMenu(String richMenuId);
+
+    /**
+     * Get default rich menu ID.
+     *
+     * @see <a href="https://developers.line.me/en/reference/messaging-api/#get-default-rich-menu-id">//developers.line.me/en/reference/messaging-api/#get-default-rich-menu-id</a>
+     */
+    CompletableFuture<RichMenuIdResponse> getDefaultRichMenuId();
+
+    /**
+     * Cancel default rich menu.
+     *
+     * @see <a href="https://developers.line.me/en/reference/messaging-api/#cancel-default-rich-menu">//developers.line.me/en/reference/messaging-api/#cancel-default-rich-menu</a>
+     */
+    CompletableFuture<BotApiResponse> cancelDefaultRichMenu();
+
+    /**
+     * Issues a link token used for the account link feature.
+     *
+     * @see <a href="https://developers.line.biz/en/reference/messaging-api/#issue-link-token">Issue link token</a>
+     */
+    CompletableFuture<IssueLinkTokenResponse> issueLinkToken(String userId);
 
     static LineMessagingClientBuilder builder(String channelToken) {
         return builder(FixedChannelTokenSupplier.of(channelToken));

@@ -16,13 +16,19 @@
 
 package com.linecorp.bot.client;
 
+import java.util.List;
+
 import com.linecorp.bot.model.Multicast;
 import com.linecorp.bot.model.PushMessage;
 import com.linecorp.bot.model.ReplyMessage;
 import com.linecorp.bot.model.profile.MembersIdsResponse;
 import com.linecorp.bot.model.profile.UserProfileResponse;
 import com.linecorp.bot.model.response.BotApiResponse;
+import com.linecorp.bot.model.response.IssueLinkTokenResponse;
+import com.linecorp.bot.model.response.NumberOfMessagesResponse;
 import com.linecorp.bot.model.richmenu.RichMenu;
+import com.linecorp.bot.model.richmenu.RichMenuBlukLinkRequest;
+import com.linecorp.bot.model.richmenu.RichMenuBlukUnlinkRequest;
 import com.linecorp.bot.model.richmenu.RichMenuIdResponse;
 import com.linecorp.bot.model.richmenu.RichMenuListResponse;
 import com.linecorp.bot.model.richmenu.RichMenuResponse;
@@ -75,6 +81,36 @@ interface LineMessagingService {
     @Streaming
     @GET("v2/bot/message/{messageId}/content")
     Call<ResponseBody> getMessageContent(@Path("messageId") String messageId);
+
+    /**
+     * Gets the number of messages sent with the /bot/message/reply endpoint. Note that the number of messages
+     * retrieved by this operation does not include the number of messages sent from LINE@ Manager.
+     *
+     * @param date Date the messages were sent. The format should be {@code yyyyMMdd} (for Example:
+     *             {@literal "20191231"}) and the timezone should be UTC+9.
+     */
+    @GET("v2/bot/message/delivery/reply")
+    Call<NumberOfMessagesResponse> getNumberOfSentReplyMessages(@Query("date") String date);
+
+    /**
+     * Gets the number of messages sent with the /bot/message/push endpoint. Note that the number of messages
+     * retrieved by this operation does not include the number of messages sent from LINE@ Manager.
+     *
+     * @param date Date the messages were sent. The format should be {@code yyyyMMdd} (for Example:
+     *             {@literal "20191231"}) and the timezone should be UTC+9.
+     */
+    @GET("v2/bot/message/delivery/push")
+    Call<NumberOfMessagesResponse> getNumberOfSentPushMessages(@Query("date") String date);
+
+    /**
+     * Gets the number of messages sent with the /bot/message/multicast endpoint. The number of messages
+     * retrieved by this operation does not include the number of messages sent from LINE@ Manager.
+     *
+     * @param date Date the messages were sent. The format should be {@code yyyyMMdd} (for Example:
+     *             {@literal "20191231"}) and the timezone should be UTC+9.
+     */
+    @GET("v2/bot/message/delivery/multicast")
+    Call<NumberOfMessagesResponse> getNumberOfSentMulticastMessages(@Query("date") String date);
 
     /**
      * Method for Retrofit.
@@ -169,10 +205,26 @@ interface LineMessagingService {
     /**
      * Method for Retrofit.
      *
+     * @see LineMessagingClient#linkRichMenuIdToUsers(List, String)
+     */
+    @POST("v2/bot/richmenu/bulk/link")
+    Call<Void> linkRichMenuToUsers(@Body RichMenuBlukLinkRequest request);
+
+    /**
+     * Method for Retrofit.
+     *
      * @see LineMessagingClient#unlinkRichMenuIdFromUser(String)
      */
     @DELETE("v2/bot/user/{userId}/richmenu")
     Call<Void> unlinkRichMenuIdFromUser(@Path("userId") String userId);
+
+    /**
+     * Method for Retrofit.
+     *
+     * @see LineMessagingClient#unlinkRichMenuIdFromUser(String)
+     */
+    @DELETE("v2/bot/richmenu/bulk/unlink")
+    Call<Void> unlinkRichMenuIdFromUsers(@Body RichMenuBlukUnlinkRequest request);
 
     /**
      * Method for Retrofit.
@@ -199,4 +251,36 @@ interface LineMessagingService {
      */
     @GET("v2/bot/richmenu/list")
     Call<RichMenuListResponse> getRichMenuList();
+
+    /**
+     * Method for Retrofit.
+     *
+     * @see LineMessagingClient#setDefaultRichMenu(String)
+     */
+    @POST("/v2/bot/user/all/richmenu/{richMenuId}")
+    Call<Void> setDefaultRichMenu(@Path("richMenuId") String richMenuId);
+
+    /**
+     * Method for Retrofit.
+     *
+     * @see LineMessagingClient#getDefaultRichMenuId()
+     */
+    @GET("/v2/bot/user/all/richmenu")
+    Call<RichMenuIdResponse> getDefaultRichMenuId();
+
+    /**
+     * Method for Retrofit.
+     *
+     * @see LineMessagingClient#cancelDefaultRichMenu()
+     */
+    @DELETE("/v2/bot/user/all/richmenu")
+    Call<Void> cancelDefaultRichMenu();
+
+    /**
+     * Issues a link token used for the account link feature.
+     *
+     * @see LineMessagingClient#issueLinkToken(String)
+     */
+    @POST("v2/bot/user/{userId}/linkToken")
+    Call<IssueLinkTokenResponse> issueLinkToken(@Path("userId") String userId);
 }

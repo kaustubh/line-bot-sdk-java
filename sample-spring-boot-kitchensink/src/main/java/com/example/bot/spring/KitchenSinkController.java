@@ -19,6 +19,7 @@ package com.example.bot.spring;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -28,6 +29,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -45,10 +48,14 @@ import com.linecorp.bot.model.event.BeaconEvent;
 import com.linecorp.bot.model.event.Event;
 import com.linecorp.bot.model.event.FollowEvent;
 import com.linecorp.bot.model.event.JoinEvent;
+import com.linecorp.bot.model.event.MemberJoinedEvent;
+import com.linecorp.bot.model.event.MemberLeftEvent;
 import com.linecorp.bot.model.event.MessageEvent;
 import com.linecorp.bot.model.event.PostbackEvent;
 import com.linecorp.bot.model.event.UnfollowEvent;
 import com.linecorp.bot.model.event.message.AudioMessageContent;
+import com.linecorp.bot.model.event.message.ContentProvider;
+import com.linecorp.bot.model.event.message.FileMessageContent;
 import com.linecorp.bot.model.event.message.ImageMessageContent;
 import com.linecorp.bot.model.event.message.LocationMessageContent;
 import com.linecorp.bot.model.event.message.StickerMessageContent;
@@ -68,6 +75,8 @@ import com.linecorp.bot.model.message.TextMessage;
 import com.linecorp.bot.model.message.VideoMessage;
 import com.linecorp.bot.model.message.imagemap.ImagemapArea;
 import com.linecorp.bot.model.message.imagemap.ImagemapBaseSize;
+import com.linecorp.bot.model.message.imagemap.ImagemapExternalLink;
+import com.linecorp.bot.model.message.imagemap.ImagemapVideo;
 import com.linecorp.bot.model.message.imagemap.MessageImagemapAction;
 import com.linecorp.bot.model.message.imagemap.URIImagemapAction;
 import com.linecorp.bot.model.message.template.ButtonsTemplate;
@@ -119,15 +128,23 @@ public class KitchenSinkController {
                 event.getReplyToken(),
                 event.getMessage().getId(),
                 responseBody -> {
-                    DownloadedContent jpg = saveContent("jpg", responseBody);
-                    DownloadedContent previewImg = createTempFile("jpg");
-                    system(
-                            "convert",
-                            "-resize", "240x",
-                            jpg.path.toString(),
-                            previewImg.path.toString());
+                    final ContentProvider provider = event.getMessage().getContentProvider();
+                    final DownloadedContent jpg;
+                    final DownloadedContent previewImg;
+                    if (provider.isExternal()) {
+                        jpg = new DownloadedContent(null, provider.getOriginalContentUrl());
+                        previewImg = new DownloadedContent(null, provider.getPreviewImageUrl());
+                    } else {
+                        jpg = saveContent("jpg", responseBody);
+                        previewImg = createTempFile("jpg");
+                        system(
+                                "convert",
+                                "-resize", "240x",
+                                jpg.path.toString(),
+                                previewImg.path.toString());
+                    }
                     reply(event.getReplyToken(),
-                          new ImageMessage(jpg.getUri(), jpg.getUri()));
+                          new ImageMessage(jpg.getUri(), previewImg.getUri()));
                 });
     }
 
@@ -137,7 +154,13 @@ public class KitchenSinkController {
                 event.getReplyToken(),
                 event.getMessage().getId(),
                 responseBody -> {
-                    DownloadedContent mp4 = saveContent("mp4", responseBody);
+                    final ContentProvider provider = event.getMessage().getContentProvider();
+                    final DownloadedContent mp4;
+                    if (provider.isExternal()) {
+                        mp4 = new DownloadedContent(null, provider.getOriginalContentUrl());
+                    } else {
+                        mp4 = saveContent("mp4", responseBody);
+                    }
                     reply(event.getReplyToken(), new AudioMessage(mp4.getUri(), 100));
                 });
     }
@@ -149,14 +172,30 @@ public class KitchenSinkController {
                 event.getReplyToken(),
                 event.getMessage().getId(),
                 responseBody -> {
-                    DownloadedContent mp4 = saveContent("mp4", responseBody);
-                    DownloadedContent previewImg = createTempFile("jpg");
-                    system("convert",
-                           mp4.path + "[0]",
-                           previewImg.path.toString());
+                    final ContentProvider provider = event.getMessage().getContentProvider();
+                    final DownloadedContent mp4;
+                    final DownloadedContent previewImg;
+                    if (provider.isExternal()) {
+                        mp4 = new DownloadedContent(null, provider.getOriginalContentUrl());
+                        previewImg = new DownloadedContent(null, provider.getPreviewImageUrl());
+                    } else {
+                        mp4 = saveContent("mp4", responseBody);
+                        previewImg = createTempFile("jpg");
+                        system("convert",
+                               mp4.path + "[0]",
+                               previewImg.path.toString());
+                    }
                     reply(event.getReplyToken(),
                           new VideoMessage(mp4.getUri(), previewImg.uri));
                 });
+    }
+
+    @EventMapping
+    public void handleFileMessageEvent(MessageEvent<FileMessageContent> event) {
+        this.reply(event.getReplyToken(),
+                   new TextMessage(String.format("Received '%s'(%d bytes)",
+                                                 event.getMessage().getFileName(),
+                                                 event.getMessage().getFileSize())));
     }
 
     @EventMapping
@@ -188,6 +227,21 @@ public class KitchenSinkController {
     public void handleBeaconEvent(BeaconEvent event) {
         String replyToken = event.getReplyToken();
         this.replyText(replyToken, "Got beacon message " + event.getBeacon().getHwid());
+    }
+
+    @EventMapping
+    public void handleMemberJoined(MemberJoinedEvent event) {
+        String replyToken = event.getReplyToken();
+        this.replyText(replyToken, "Got memberJoined message " + event.getJoined().getMembers()
+                .stream().map(Source::getUserId)
+                .collect(Collectors.joining(",")));
+    }
+
+    @EventMapping
+    public void handleMemberLeft(MemberLeftEvent event) {
+        log.info("Got memberLeft message: {}", event.getLeft().getMembers()
+                .stream().map(Source::getUserId)
+                .collect(Collectors.joining(",")));
     }
 
     @EventMapping
@@ -243,28 +297,50 @@ public class KitchenSinkController {
             throws Exception {
         String text = content.getText();
 
-        log.info("Got text message from {}: {}", replyToken, text);
+        log.info("Got text message from replyToken:{}: text:{}", replyToken, text);
         switch (text) {
             case "profile": {
+                log.info("Invoking 'profile' command: source:{}",
+                         event.getSource());
                 String userId = event.getSource().getUserId();
                 if (userId != null) {
-                    lineMessagingClient
-                            .getProfile(userId)
-                            .whenComplete((profile, throwable) -> {
-                                if (throwable != null) {
-                                    this.replyText(replyToken, throwable.getMessage());
-                                    return;
-                                }
+                    if (event.getSource() instanceof GroupSource) {
+                        lineMessagingClient
+                                .getGroupMemberProfile(((GroupSource) event.getSource()).getGroupId(), userId)
+                                .whenComplete((profile, throwable) -> {
+                                    if (throwable != null) {
+                                        this.replyText(replyToken, throwable.getMessage());
+                                        return;
+                                    }
 
-                                this.reply(
-                                        replyToken,
-                                        Arrays.asList(new TextMessage(
-                                                              "Display name: " + profile.getDisplayName()),
-                                                      new TextMessage("Status message: "
-                                                                      + profile.getStatusMessage()))
-                                );
+                                    this.reply(
+                                            replyToken,
+                                            Arrays.asList(new TextMessage("(from group)"),
+                                                          new TextMessage(
+                                                                  "Display name: " + profile.getDisplayName()),
+                                                          new ImageMessage(profile.getPictureUrl(),
+                                                                           profile.getPictureUrl()))
+                                    );
+                                });
+                    } else {
+                        lineMessagingClient
+                                .getProfile(userId)
+                                .whenComplete((profile, throwable) -> {
+                                    if (throwable != null) {
+                                        this.replyText(replyToken, throwable.getMessage());
+                                        return;
+                                    }
 
-                            });
+                                    this.reply(
+                                            replyToken,
+                                            Arrays.asList(new TextMessage(
+                                                                  "Display name: " + profile.getDisplayName()),
+                                                          new TextMessage("Status message: "
+                                                                          + profile.getStatusMessage()))
+                                    );
+
+                                });
+                    }
                 } else {
                     this.replyText(replyToken, "Bot can't use profile API without user ID");
                 }
@@ -417,6 +493,33 @@ public class KitchenSinkController {
                                 )
                         )
                 ));
+                break;
+            case "imagemap_video":
+                this.reply(replyToken, ImagemapMessage
+                        .builder()
+                        .baseUrl(createUri("/static/imagemap_video"))
+                        .altText("This is an imagemap with video")
+                        .baseSize(new ImagemapBaseSize(722, 1040))
+                        .video(
+                                ImagemapVideo.builder()
+                                             .originalContentUrl(URI.create(
+                                                     createUri("/static/imagemap_video/originalContent.mp4")))
+                                             .previewImageUrl(URI.create(
+                                                     createUri("/static/imagemap_video/previewImage.jpg")))
+                                             .area(new ImagemapArea(40, 46, 952, 536))
+                                             .externalLink(
+                                                     new ImagemapExternalLink(
+                                                             URI.create("https://example.com/see_more.html"),
+                                                             "See More")
+                                             )
+                                             .build()
+                        )
+                        .actions(Stream.of(
+                                new MessageImagemapAction(
+                                        "NIXIE CLOCK",
+                                        new ImagemapArea(260, 600, 450, 86)
+                                )).collect(Collectors.toList()))
+                        .build());
                 break;
             case "flex":
                 this.reply(replyToken, new ExampleFlexMessageSupplier().get());

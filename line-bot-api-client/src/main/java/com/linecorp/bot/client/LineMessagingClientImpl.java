@@ -18,6 +18,7 @@ package com.linecorp.bot.client;
 
 import static java.util.Collections.emptyList;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
@@ -28,7 +29,11 @@ import com.linecorp.bot.model.ReplyMessage;
 import com.linecorp.bot.model.profile.MembersIdsResponse;
 import com.linecorp.bot.model.profile.UserProfileResponse;
 import com.linecorp.bot.model.response.BotApiResponse;
+import com.linecorp.bot.model.response.IssueLinkTokenResponse;
+import com.linecorp.bot.model.response.NumberOfMessagesResponse;
 import com.linecorp.bot.model.richmenu.RichMenu;
+import com.linecorp.bot.model.richmenu.RichMenuBlukLinkRequest;
+import com.linecorp.bot.model.richmenu.RichMenuBlukUnlinkRequest;
 import com.linecorp.bot.model.richmenu.RichMenuIdResponse;
 import com.linecorp.bot.model.richmenu.RichMenuListResponse;
 import com.linecorp.bot.model.richmenu.RichMenuResponse;
@@ -75,6 +80,21 @@ public class LineMessagingClientImpl implements LineMessagingClient {
     @Override
     public CompletableFuture<MessageContentResponse> getMessageContent(final String messageId) {
         return toMessageContentResponseFuture(retrofitImpl.getMessageContent(messageId));
+    }
+
+    @Override
+    public CompletableFuture<NumberOfMessagesResponse> getNumberOfSentReplyMessages(String date) {
+        return toFuture(retrofitImpl.getNumberOfSentReplyMessages(date));
+    }
+
+    @Override
+    public CompletableFuture<NumberOfMessagesResponse> getNumberOfSentPushMessages(String date) {
+        return toFuture(retrofitImpl.getNumberOfSentPushMessages(date));
+    }
+
+    @Override
+    public CompletableFuture<NumberOfMessagesResponse> getNumberOfSentMulticastMessages(String date) {
+        return toFuture(retrofitImpl.getNumberOfSentMulticastMessages(date));
     }
 
     @Override
@@ -143,8 +163,23 @@ public class LineMessagingClientImpl implements LineMessagingClient {
     }
 
     @Override
+    public CompletableFuture<BotApiResponse> linkRichMenuIdToUsers(List<String> userIds, String richMenuId) {
+        return toBotApiFuture(retrofitImpl.linkRichMenuToUsers(RichMenuBlukLinkRequest.builder()
+                                                                                      .richMenuId(richMenuId)
+                                                                                      .userIds(userIds)
+                                                                                      .build()));
+    }
+
+    @Override
     public CompletableFuture<BotApiResponse> unlinkRichMenuIdFromUser(final String userId) {
         return toBotApiFuture(retrofitImpl.unlinkRichMenuIdFromUser(userId));
+    }
+
+    @Override
+    public CompletableFuture<BotApiResponse> unlinkRichMenuIdFromUsers(List<String> userIds) {
+        return toBotApiFuture(retrofitImpl.unlinkRichMenuIdFromUsers(RichMenuBlukUnlinkRequest.builder()
+                                                                                              .userIds(userIds)
+                                                                                              .build()));
     }
 
     @Override
@@ -162,6 +197,26 @@ public class LineMessagingClientImpl implements LineMessagingClient {
     @Override
     public CompletableFuture<RichMenuListResponse> getRichMenuList() {
         return toFuture(retrofitImpl.getRichMenuList());
+    }
+
+    @Override
+    public CompletableFuture<BotApiResponse> setDefaultRichMenu(final String richMenuId) {
+        return toBotApiFuture(retrofitImpl.setDefaultRichMenu(richMenuId));
+    }
+
+    @Override
+    public CompletableFuture<RichMenuIdResponse> getDefaultRichMenuId() {
+        return toFuture(retrofitImpl.getDefaultRichMenuId());
+    }
+
+    @Override
+    public CompletableFuture<BotApiResponse> cancelDefaultRichMenu() {
+        return toBotApiFuture(retrofitImpl.cancelDefaultRichMenu());
+    }
+
+    @Override
+    public CompletableFuture<IssueLinkTokenResponse> issueLinkToken(String userId) {
+        return toFuture(retrofitImpl.issueLinkToken(userId));
     }
 
     // TODO: Extract this method.
